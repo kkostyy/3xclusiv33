@@ -1330,36 +1330,20 @@ function initApp() {
   userId   = tg?.initDataUnsafe?.user?.id   || null;
   userName = tg?.initDataUnsafe?.user?.first_name || 'Гость';
 
-  // DEBUG — показать что получили от Telegram
-  console.log('TG object:', !!tg);
-  console.log('initDataUnsafe:', JSON.stringify(tg?.initDataUnsafe));
-  console.log('userId:', userId);
-
   if (userId) {
     fetch(`${API}/api/is_admin/${userId}`)
       .then(r => r.json())
       .then(data => {
-        console.log('is_admin response:', JSON.stringify(data));
         if (data.is_admin) {
-          window.location.replace(`${API}/admin`);
+          window.location.replace("https://3xclusiv33.vercel.app/admin.html");
           return;
         }
         startMiniApp();
       })
-      .catch(e => { console.log('fetch error:', e); startMiniApp(); });
+      .catch(() => startMiniApp());
   } else {
-    // userId пустой — показать предупреждение на экране
-    console.log('userId is NULL — tg.initData:', tg?.initData);
-    showDebug();
     startMiniApp();
   }
-}
-
-function showDebug() {
-  const d = document.createElement('div');
-  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c00;color:#fff;padding:10px;font-size:11px;z-index:9999;font-family:monospace;word-break:break-all';
-  d.innerHTML = 'DEBUG: userId=null<br>initData=' + (tg?.initData || 'empty') + '<br>initDataUnsafe=' + JSON.stringify(tg?.initDataUnsafe || {});
-  document.body.appendChild(d);
 }
 
 function startMiniApp() {

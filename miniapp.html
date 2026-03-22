@@ -1321,9 +1321,22 @@ if (tg) { tg.ready(); tg.expand(); }
 const userId   = tg?.initDataUnsafe?.user?.id   || null;
 const userName = tg?.initDataUnsafe?.user?.first_name || 'Гость';
 
-const API = window.location.hostname === 'localhost'
+// API URL — работает локально и на Railway
+const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:8080'
-  : '3xclusiv3-production.up.railway.app'; // ← замените после деплоя
+  : 'https://3xclusiv3-production.up.railway.app';
+
+// Проверка: если пользователь админ — открыть панель администратора
+if (userId) {
+  fetch(`${API}/api/is_admin/${userId}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.is_admin) {
+        window.location.href = `${API}/admin`;
+      }
+    })
+    .catch(() => {});
+}
 
 // ═══ THEME ═══
 let isDark = localStorage.getItem('th_3x') !== 'light';

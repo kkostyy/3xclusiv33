@@ -1191,10 +1191,8 @@ body::after {
   transform: translateX(-50%) translateY(0);
 }
 
-</style>
 
 /* ═══ EXTRA STYLES ═══ */
-<style>
 /* Wishlist heart */
 .card-wish { position:absolute; top:10px; left:10px; background:none; border:none; cursor:pointer; font-size:18px; line-height:1; padding:2px; }
 /* Size view */
@@ -1472,8 +1470,7 @@ function startMiniApp() {
   if (userId) loadWishlistIds();
 }
 
-if (tg) { tg.ready(); tg.expand(); setTimeout(initApp, 150); }
-else { initApp(); }
+// initApp вызывается в конце файла после определения всех функций
 
 // ═══ THEME ═══
 let isDark = localStorage.getItem('th_3x') !== 'light';
@@ -1900,7 +1897,18 @@ async function loadProfile() {
   } catch {}
 
   const monogram = usr.first_name?.[0]?.toUpperCase()||'?';
-  el.innerHTML = `
+
+  // Кнопка админа — показываем если is_admin
+  let adminBlock = '';
+  try {
+    const ar = await fetch(`${API}/api/is_admin/${usr.id}`);
+    const ad = await ar.json();
+    if (ad.is_admin) {
+      adminBlock = `<div onclick="window.location.href='https://3xclusiv33.vercel.app/admin.html'" style="margin:0 0 16px;padding:16px;background:var(--accent-2);border:1px solid var(--accent);border-radius:14px;text-align:center;cursor:pointer"><div style="font-family:'Jost',sans-serif;font-size:9px;font-weight:200;letter-spacing:.5em;text-transform:uppercase;color:var(--accent)">⚙️ панель администратора</div></div>`;
+    }
+  } catch {}
+
+  el.innerHTML = adminBlock + `
     <div class="profile-ident">
       <div class="profile-monogram">${monogram}</div>
       <div class="profile-name-block">
@@ -2089,6 +2097,10 @@ document.getElementById('navOrd').addEventListener('click', ()=>switchView('orde
 document.getElementById('navPro').addEventListener('click', ()=>switchView('profile'));
 
 const BOT_FILE_TOKEN = '';
+
+// Запуск после загрузки всех функций
+if (tg) { tg.ready(); tg.expand(); setTimeout(initApp, 200); }
+else { setTimeout(initApp, 0); }
 </script>
 </body>
 </html>

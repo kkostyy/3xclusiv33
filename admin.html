@@ -676,9 +676,16 @@ body::before {
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
-const API = window.location.hostname === 'localhost'
+const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:8080'
-  : '3xclusiv3-production.up.railway.app';
+  : 'https://3xclusiv3-production.up.railway.app';
+
+// ID текущего админа
+const ADMIN_ID = tg?.initDataUnsafe?.user?.id || parseInt(localStorage.getItem('admin_id_3x') || '0');
+if (!ADMIN_ID && !tg) {
+  const id = prompt('Введи свой Telegram ID для доступа к панели:');
+  if (id) { localStorage.setItem('admin_id_3x', id); window.location.reload(); }
+}
 
 // ═══ THEME ═══
 let isDark = localStorage.getItem('adm_th') !== 'light';
@@ -770,7 +777,7 @@ let orders = [];
 
 async function loadOrders() {
   try {
-    const r = await fetch(`${API}/api/admin/orders`);
+    const r = await fetch(`${API}/api/admin/orders?admin_id=${ADMIN_ID}`);
     if (!r.ok) throw 0;
     orders = await r.json();
   } catch { orders = DEMO_ORDERS; }
@@ -831,7 +838,11 @@ function setStatus(orderId, status) {
   renderOrders();
   updateStats();
   toast(`заказ #${orderId} → ${STATUS_CFG[status].t}`);
-  // в реале: fetch(`${API}/api/admin/orders/${orderId}`, { method:'PATCH', body: JSON.stringify({status}) })
+  fetch(`${API}/api/admin/orders/${orderId}`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ status, admin_id: ADMIN_ID })
+  }).catch(() => {});
 }
 
 function notifyUser(orderId) {
@@ -853,7 +864,7 @@ let products = [];
 
 async function loadProducts() {
   try {
-    const r = await fetch(`${API}/api/products`);
+    const r = await fetch(`${API}/api/admin/products?admin_id=${ADMIN_ID}`);
     if (!r.ok) throw 0;
     products = await r.json();
   } catch { products = DEMO_PRODUCTS; }
@@ -877,9 +888,19 @@ function renderProducts() {
 function toggleAvail(pid) {
   const p = products.find(x => x.id === pid);
   if (!p) return;
-  p.is_available = p.is_available ? 0 : 1;
-  renderProducts();
-  toast(p.is_available ? `${p.name} — в наличии` : `${p.name} — скрыт`);
+  fetch(`${API}/api/admin/products/${pid}/toggle`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ admin_id: ADMIN_ID })
+  }).then(r => r.json()).then(data => {
+    p.is_available = data.is_available;
+    renderProducts();
+    toast(p.is_available ? `${p.name} — в наличии` : `${p.name} — скрыт`);
+  }).catch(() => {
+    p.is_available = p.is_available ? 0 : 1;
+    renderProducts();
+    toast(p.is_available ? `${p.name} — в наличии` : `${p.name} — скрыт`);
+  });
 }
 
 function openAddProduct() { openPanel('addPanel'); }
@@ -890,12 +911,17 @@ function saveProduct() {
   const cat   = document.getElementById('fCat').value;
   const desc  = document.getElementById('fDesc').value.trim();
   if (!name || !price) { toast('заполните название и цену'); return; }
-  const newProd = { id: Date.now(), name, price, category: cat, description: desc, is_available: 1 };
-  products.unshift(newProd);
-  renderProducts();
-  closePanel();
-  toast(`${name} добавлен`);
-  ['fName','fPrice','fDesc'].forEach(id => document.getElementById(id).value = '');
+  fetch(`${API}/api/admin/products`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ admin_id: ADMIN_ID, name, price, category: cat, description: desc })
+  }).then(r => r.json()).then(data => {
+    products.unshift({ id: data.id, name, price, category: cat, description: desc, is_available: 1 });
+    renderProducts();
+    closePanel();
+    toast(`${name} добавлен`);
+    ['fName','fPrice','fDesc'].forEach(id => document.getElementById(id).value = '');
+  }).catch(() => toast('ошибка сохранения'));
 }
 
 // ═══ ANALYTICS ═══
@@ -955,6 +981,9 @@ function renderAnalytics() {
 
 // ═══ START ═══
 loadOrders();
+
+// Обновлять статистику каждые 30 секунд
+setInterval(loadOrders, 30000);
 </script>
 </body>
 </html>
